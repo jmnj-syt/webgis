@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>map</title>
+    <script src="https://cdn.jsdelivr.net/npm/ol@v9.2.2/dist/ol.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v9.2.2/ol.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        #searchContainer, #addMarkers, #addprovince {
+            position: absolute;
+            background-color: white;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        #searchContainer {
+            top: 10px;
+            left: 50px;
+        }
+
+        #addMarkers {
+            top: 85px;
+            left: 50px;
+        }
+
+        #addprovince {
+            top: 195px;
+            left: 50px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+    </style>
+    <script type="text/javascript" src="http://api.tianditu.gov.cn/api?v=4.0&tk=c07f0655a66df9ee06f5c97a219d25d7">
+    </script>
+</head>
+
+<body>
+<div id="map"></div>
+<div id="searchContainer">
+    <input type="text" id="searchInput" placeholder="输入标注点内容">
+    <button onclick="searchMarker()">搜索</button>
+</div>
+<div id="addMarkers">
+    <p>添加自定义足迹点</p>
+    <input type="button" value="添加" onClick="endeditMarker();markerTool.open();" />
+    <input type="button" value="清除" onClick="markerTool.close(); clearMarkers();"/>
+</div>
+<div id="addprovince">
+    <button id="showProvincesBtn">热度省份显示</button>
+</div>
+
+
+
+<script>
+    //初始化地图对象
+    map = new T.Map("map", {
+        datasourcesControl: true
+    });
+    //设置显示地图的中心点和级别
+    map.centerAndZoom(new T.LngLat(116.40969, 39.89945), 4);
+    //创建对象
+    // 鹰眼图
+    var miniMap = new T.Control.OverviewMap({
+        isOpen: true,
+        size: new T.Point(150, 150)
+    })
+    // 图层切换
+    var ctrl = new T.Control.MapType();
+    // 比例尺
+    var scale = new T.Control.Scale();
+    // 缩放zoom
+    control = new T.Control.Zoom();
+    // 添加控件
+    map.addControl(ctrl);
+    map.addControl(miniMap);
+    map.addControl(scale);
+    map.addControl(control);
+
+    //<!--搜索、 跳转、 高亮-- >
+    // 存储所有的标注点
+    var firstmarkers = [];
+    // 添加更多标注点
+    var locations = [{
+        lng: 94.683333,
+        lat: 40.2,
+        content: '敦煌',
+        image: './img/wxm1.jpg'
+    },
+        {
+            lng: 114.365248,
+            lat: 30.53786,
+            content: '武汉大学',
+            image: './img/wxm2.jpg'
+        },
+        {
+            lng: 112.9334574,
+            lat: 28.2312227,
+            content: '长沙',
+            image: './img/wxm3.jpg'
+        },
+        {
+            lng: 115.9474861,
+            lat: 29.6653828,
+            content: '九江',
+            image: './img/wxm4.jpg'
+        }
+
+    ];
+    locations.forEach(function (location) {
+        createMarker(new T.LngLat(location.lng, location.lat), location.content, location.image);
+    });
+    // 创建标注点函数
+    function createMarker(lngLat, content, image) {
+        // 自定义图标
+        var icon = new T.Icon({
+            iconUrl: './img/Marker1.png', // 本地图标路径
+            iconSize: new T.Point(40, 40), // 图标大小
+            iconAnchor: new T.Point(12, 41) // 图标锚点
+        });
+        var marker = new T.Marker(lngLat, {
+            icon: icon
+        });
+        map.addOverLay(marker);
+        firstmarkers.push(marker); // 保存标注点
+
+        var infoWin = new T.InfoWindow();
+        var sContent = "<div style='margin:0px;'>" +
+            "<div style='margin-bottom:55px;'>" +
+            "<img style='float:left;width:30%;margin:0px 10px' src=" + image + ">" +
+            "<h2 style='margin:10px 0px 10px 120px;'>" + content + "</h2>" +
+            "</div>" +
+            "</div>";
+        infoWin.setContent(sContent);
+        marker.infoContent = content; // 将信息内容保存在marker上
+        marker.addEventListener("click", function () {
+            marker.openInfoWindow(infoWin);
+        });
+    }
+    // 搜索并高亮显示标注点
+    function searchMarker() {
+        var keyword = document.getElementById('searchInput').value;
+        firstmarkers.forEach(function (marker) {
+            if (marker.infoContent && marker.infoContent.includes(keyword)) {
+                var point = marker.getLngLat();
+                map.panTo(point);
+                map.centerAndZoom(point, zoom);
+                var infoWin = new T.InfoWindow();
+                infoWin.setContent(marker.infoContent);
+                marker.openInfoWindow(infoWin);
+                // 高亮显示标注点
+                marker.setIcon(new T.Icon({
+                    iconUrl: "./img/Marker2.png", // 自定义高亮图标
+                    iconSize: new T.Point(40, 40),
+                    iconAnchor: new T.Point(12, 41)
+                }));
+            } else {
+                // 恢复默认图标
+                marker.setIcon(new T.Icon({
+                    iconUrl: "./img/Marker1.png", // 自定义默认图标
+                    iconSize: new T.Point(40, 40),
+                    iconAnchor: new T.Point(12, 41)
+                }));
+            }
+        });
+    }
+
+    // 创建标注工具对象
+    var markerTool = new T.MarkTool(map, {
+        follow: true
+    });
+
+    // 添加标注完成事件监听器
+    markerTool.addEventListener("mouseup", function (e) {
+        var lngLat = e.currentLnglat;
+        saveMarkerToDatabase(lngLat.getLng(), lngLat.getLat());
+    });
+
+
+    function endeditMarker() {
+        var markers = markerTool.getMarkers();
+        for (var i = 0; i < markers.length; i++) {
+            markers[i].disableDragging();
+        }
+    }
+
+    function saveMarkerToDatabase(lng, lat) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/savemarkerServlet", true);
+        xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                alert("Marker saved successfully!");
+            }
+        };
+        xhr.send(JSON.stringify({
+            longitude: lng,
+            latitude: lat
+        }));
+    }
+    function clearMarkers() {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/clearmarkerServlet", true);
+        xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                location.reload();
+                alert("All markers cleared successfully!");
+            }
+        };
+        xhr.send();
+    }
+
+    document.getElementById('showProvincesBtn').onclick = function() {
+        window.location.href = 'map.html';
+    };
+</script>
+
+</body>
+
+</html>

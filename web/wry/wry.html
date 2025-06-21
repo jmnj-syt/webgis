@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>王若岩</title>
+    <link rel="stylesheet" href="../css/all.css">
+    <link rel="stylesheet" href="../css/nav.css">
+    <link rel="stylesheet" href="../css/education.css">
+    <style>
+        body .shell-main-nav ul .nav-box {
+            left: 360px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: rgb(248, 248, 248);
+            background-repeat: no-repeat;
+            background-size: contain;
+        }
+
+        body .shell-main-nav {
+            margin-bottom: 0;
+        }
+
+        .main {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            max-width: 1430px;
+            overflow-x: hidden;
+            transform: translateY(0px);
+            background-color: #fff;
+            transition: .3s;
+            padding: 50px;
+            border: 1px solid #000;
+        }
+
+        .img {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background-image: url('./th.jpg');
+            background-attachment: fixed;
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+
+        .img::after {
+            content: '王若岩';
+            width: 500px;
+            height: 200px;
+            border-radius: 3px;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border: #fff 10px solid;
+            color: #fff;
+            letter-spacing: 30px;
+            font: 100 70px 'font';
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+        }
+
+        /* -------------------------------------- */
+
+        .section-top {
+            width: 100%;
+            height: 55vh;
+            display: flex;
+            justify-content: space-evenly;
+            margin-top: 50px;
+        }
+
+        .section-top-middle {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background-image: url(../img/head1.jpg);
+            background-size: cover;
+            background-position-y: 0;
+            margin: 0 50px;
+            border: 18px solid rgba(165, 226, 216, 0.95);
+        }
+
+        .section-top-left,
+        .section-top-right {
+            width: 300px;
+            height: 300px;
+            font-size: 22px;
+            margin-top: 30px;
+        }
+
+        .section-top-left {
+            text-align: right;
+        }
+
+        .section-top p {
+            font-size: 26px;
+            color: #22A39F;
+            margin: 5px 0;
+        }
+
+        .section-middle,
+        .section-bottom {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .section-bottom {
+            position: relative;
+        }
+
+        .section-middle-box {
+            width: 100%;
+            display: flex;
+            margin: 50px 0;
+        }
+
+        .section-middle-left {
+            width: 600px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .section-middle-left span {
+            text-align: left;
+            color: rgb(0, 0, 0);
+            margin-top: 10px;
+        }
+
+        .section-middle-right {
+            width: 600px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .section-middle-right img {
+            width: 400px;
+        }
+
+        .section-middle-left span {
+            text-align: center;
+            font-size: 20px;
+        }
+
+        .Skills {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-evenly;
+            margin: 40px 0;
+        }
+
+        .Skills li {
+            width: 50%;
+            display: flex;
+            justify-content: space-evenly;
+            margin: 20px 0;
+            height: 50px;
+            cursor: pointer;
+        }
+
+        .Skills li span,
+        .Skills li p {
+            text-align: center;
+            font-size: 20px;
+            display: block;
+            width: 50%;
+            transition: .2s;
+            letter-spacing: 0px;
+        }
+
+        .Skills li p {
+            color: #22A39F;
+        }
+
+        .Skills li:hover p {
+            letter-spacing: 5px;
+        }
+
+        .Achievement {
+            margin-top: 40px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .Achievement-left {
+            display: flex;
+            flex-direction: column;
+            width: 300px;
+        }
+
+        .Achievement-left h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        .Achievement-left span {
+            font-size: 10px;
+        }
+
+        .Achievement-right {
+            display: flex;
+            justify-content: space-evenly;
+            flex-wrap: wrap;
+            width: 450px;
+        }
+
+        .Achievement-right img {
+            width: 200px;
+            margin-left: 20px;
+            margin-bottom: 20px;
+            transition: .3s;
+        }
+
+        .Achievement-right img:hover {
+            transform: scale(1.1);
+        }
+
+        article {
+            display: flex;
+            justify-content: center;
+        }
+
+        aside {
+            width: 100%;
+            position: relative;
+            left: 50%;
+            transform: translate(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: rgb(240, 240, 224);
+            padding: 50px 0;
+        }
+
+        .bottom {
+            width: 1300px;
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .bottom::after {
+            content: 'QQ:10086';
+            position: absolute;
+            top: -170px;
+            width: 100%;
+            text-align: center;
+            font: 300 40px '';
+        }
+
+        .bottom img {
+            width: 23%;
+            height: 300px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="shell">
+        <div class="shell-main">
+            <div class="shell-main-nav">
+                <div class="logo">
+                    <img src="../img/head1.jpg" alt="">
+                    <span>王若岩|个人页面</span>
+                </div>
+                <ul>
+                    <li><a href="../homepage.html">首页</a></li>
+                    <li><a href="../introduce.html">成员介绍</a></li>
+                    <li><a href="../login.html">登录</a></li>
+                    <div class="nav-box"></div>
+                </ul>
+            </div>
+            <div class="img"></div>
+            <div class="main">
+                <section>
+                    <div class="section-top">
+                        <div class="section-top-left">
+                            <p>姓名<br /></p>
+                            王若岩<br />
+                            <p>年龄<br /></p>
+                            21<br />
+                            <p>专业<br /></p>
+                            地理信息科学(数字地图与空间信息工程)<br />
+                            <p>联系电话<br /></p>
+                            15389242878<br />
+                        </div>
+                        <div class="section-top-middle">
+
+                        </div>
+                        <div class="section-top-right">
+                            <p>出生年月<br /></p>
+                            2002年11月<br />
+                            <p>学历<br /></p>
+                            本科<br />
+                            <p>学院<br /></p>
+                            资源与环境科学学院学院<br />
+                            <p>邮箱<br /></p>
+                            961125748@qq.com<br />
+
+                        </div>
+                    </div>
+                    <!-- 教育背景 -->
+                    <div class="box">
+                        <div class="box1">
+                            <h2 class="h2">教育背景</h2>
+                            <p>2009.9—2015.6 </p>
+                            <p>西安市未央区西航三校</p>
+                            <p class="p1">在这里，我第一次系统学习，思考要成为什么样的人，作为学生应该做什么。</p>
+                            <hr />
+                            <p>2015.9—2018.6 </p>
+                            <p>西安交通大学附属中学</p>
+                            <p class="p1">在这里，我明确了自己的目标，认识了自己的朋友，挑战自己。</p>
+                            <hr />
+                            <p>2018.9—2021.6 </p>
+                            <p>陕西省西安中学</p>
+                            <p class="p1">在这里，我知道了自己喜欢什么，要选择什么专业，获得了优异的成绩。</p>
+
+                        </div>
+                        <div class="box2">
+                            <h2 class="h2">主修课程与专业能力介绍</h2>
+                            <div class="box2_1">
+                                <div class="content1">
+                                    <div class="text">
+                                        <h3>网络GIS与位置服务</h3>
+                                        <p>WebGIS是地理信息系统（GIS）在Web平台上的应用，结合了地理信息系统和互联网技术，可以通过Web浏览器访问和操作地理空间数据。通过学习WebGIS，可以掌握在Web环境下利用地理信息系统技术来展示、分析和共享地理空间数据的能力。</p>
+                                    </div>
+
+                                </div>
+                                <div class="content2">
+                                    <div class="text">
+                                        <h3>面向对象的gis软件开发</h3>
+                                        <p>掌握利用面向对象编程技术进行地理信息系统软件开发的能力，为构建高效、可扩展的GIS应用程序提供技术支持。</p>
+                                    </div>
+
+                                </div>
+                            </div>
+                            <div class="box2_1">
+                                <div class="content1">
+                                    <div class="text">
+                                        <h3>GIS工程概论</h3>
+                                        <p>地理信息系统工程是应用系统原理和方法，针对特定的实际应用目的和要求，统筹设计、优化、建设、评价、维护实用GIS系统的全部过程和步骤的统称。</p>
+                                    </div>
+
+                                </div>
+                                <div class="content2">
+                                    <div class="text">
+                                        <h3>地图设计与编制</h3>
+                                        <p>研究地图的制作、解释和使用的学科。它涉及到地图的设计、投影、符号化、空间数据处理等内容，旨在帮助人们更好地理解和利用地图来描述和分析地球表面的空间关系。地图学常被应用于地理信息系统（GIS）、城市规划、环境保护、资源管理等领域。学习地图学可以帮助人们提高对地理空间数据的理解和利用能力。</p>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+            </div>
+            <div>
+                <section>
+                    <iframe src="../wrytravel.html" style="width:1500px;height:650px"></iframe>
+                </section>
+            </div>
+        </div>
+
+    </div>
+    <script src="https://ajax.aspnetcdn.com/ajax/jquery/jquery-3.5.1.min.js"></script>
+    <script>
+        window.addEventListener('scroll', function () {
+            let top = window.scrollY
+            console.log(top)
+            if (top > 200) {
+                $('.main').css('transform', 'translateY(-30px)')
+            } else {
+                $('.main').css('transform', 'translateY(0%)')
+            }
+            // if (top > 650) {
+
+            // } else {
+
+            // }
+        })
+    </script>
+</body>
+
+</html>

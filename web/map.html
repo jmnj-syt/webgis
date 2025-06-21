@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>map</title>
+    <script src="https://cdn.jsdelivr.net/npm/ol@v9.2.2/dist/ol.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v9.2.2/ol.css">
+
+</head>
+<style>
+    .ol-overviewmap {
+        right: 10px !important;
+        left: auto !important;
+    }
+    .custom-mouse-position{
+        position: absolute;
+        bottom: 10px;
+        right:180px;
+        background: rgba(255, 255, 255, 0.7);
+        padding: 5px;
+    }
+</style>
+<body>
+
+<div id="map" style="width: 100%; height: 95vh;"></div>
+<button id="showProvincesBtn">热度省份显示</button>
+<script>
+
+    // 创建天地图底图
+    const tiandituLayer = new ol.layer.Tile({
+        source: new ol.source.XYZ({
+            url: 'http://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}&tk=c07f0655a66df9ee06f5c97a219d25d7'
+        }),
+        visible:true
+    });
+    const tiandituFont = new ol.layer.Tile({
+        source: new ol.source.XYZ({
+            url: 'http://t0.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=c07f0655a66df9ee06f5c97a219d25d7'
+        }),
+        visible: true
+    });
+
+    // 实例底图控件
+    const scaleLineControl = new ol.control.ScaleLine() // 比例尺工具
+    const fullScreenControl = new ol.control.FullScreen()
+    const overviewMapControl = new ol.control.OverviewMap({
+        layers: [
+            new ol.layer.Tile({
+                source: new ol.source.XYZ({
+                    url: 'http://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}&tk=c07f0655a66df9ee06f5c97a219d25d7'
+                })
+            })
+        ],
+        collapsed: false,
+    })
+    const mousePositionControl = new ol.control.MousePosition({ // 创建鼠标位置控件
+        coordinateFormat: ol.coordinate.createStringXY(4), // 坐标格式化为小数点后4位
+        projection: 'EPSG:4326', // 使用WGS84坐标系
+        className: 'custom-mouse-position',
+        target: document.getElementById('mouse-position'), // 显示坐标的HTML元素ID
+        undefinedHTML: '&nbsp;' // 当鼠标不在地图上时显示的内容
+    });
+    // 设置地图图层
+    const map = new ol.Map({
+        // 让id为map的div作为地图的容器
+        target: 'map',
+        layers: [
+            tiandituLayer,
+            tiandituFont
+        ],
+        // 设置地图视图
+        view: new ol.View({
+            center: ol.proj.fromLonLat([105, 38.42]),  // 定义地图显示中心位置为中国
+            zoom: 4.5  // 定义地图显示层级为4
+        }), // 添加控件
+        controls: ol.control.defaults.defaults().extend([
+            scaleLineControl,
+            fullScreenControl,
+            overviewMapControl,
+            mousePositionControl
+        ])
+    });
+
+
+    
+
+    // // 使用geojson数据添加矢量图层
+    // var GeoJsonLayer = new ol.layer.Vector({
+    //     source: new ol.source.Vector({
+    //         projection: 'EPSG:4326',
+    //         url: 'https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json',
+    //         format: new ol.format.GeoJSON()
+    //     }),
+    // });
+    // map.addLayer(GeoJsonLayer);
+
+    var vectorSource = new ol.source.Vector({
+        format: new ol.format.GeoJSON()
+    });
+
+    var vectorLayer = new ol.layer.Vector({
+        source: vectorSource
+    });
+
+    map.addLayer(vectorLayer);
+
+    document.getElementById('showProvincesBtn').addEventListener('click', function() {
+        fetch('/searchServlet')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+                vectorSource.clear();
+                vectorSource.addFeatures(vectorSource.getFormat().readFeatures(data, {
+                    defaultProjection: 'EPSG:4326',
+                    featureProjection: 'EPSG:3857'
+                }));
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            });
+    });
+
+
+</script>
+</body>
+</html>
