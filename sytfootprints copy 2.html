@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <title>足迹地图</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-minimap@3.6.1/dist/Control.MiniMap.min.css" />
+  <script src="https://unpkg.com/leaflet-minimap@3.6.1/dist/Control.MiniMap.min.js"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+  <!-- 地图查询 -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+  <style>
+    /* 基本样式 */
+    html,
+    body,
+    #map {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      /* 防止滚动条出现 */
+    }
+
+    /* 图片弹窗样式 */
+    .popup-img {
+      max-width: 200px;
+      max-height: 150px;
+      border-radius: 8px;
+      margin-top: 8px;
+      display: block;
+      /* 确保图片独占一行 */
+      object-fit: cover;
+      /* 裁剪图片以适应容器 */
+    }
+
+    /* 加载器样式 */
+    #loader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+      background: white;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 错误信息详情样式 */
+    .error-details {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow: auto;
+      white-space: pre-wrap;
+      /* 保留空白和换行 */
+    }
+
+    /* 地图上方的控制面板样式 */
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 50px;
+      z-index: 999;
+      /* 确保在地图上方 */
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      /* 元素之间的间距 */
+      font-family: Arial, sans-serif;
+    }
+
+    /* 统一搜索组的布局 */
+    .search-group {
+      display: flex;
+      /* 让组内的元素水平排列 */
+      flex-wrap: wrap;
+      /* 如果空间不足，允许换行 */
+      align-items: center;
+      /* 垂直居中对齐 */
+      gap: 8px;
+      /* 组内元素之间的间距 */
+    }
+
+    #controls input,
+    #controls select,
+    #controls button {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    #controls button {
+      background-color: #4CAF50;
+      /* 绿色 */
+      color: white;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.3s ease;
+      /* 平滑过渡效果 */
+    }
+
+    #controls button:hover {
+      background-color: #45a049;
+    }
+
+    #controls .search-group {
+      display: flex;
+      gap: 5px;
+    }
+
+    #controls .search-group input {
+      flex-grow: 1;
+      /* 输入框占据更多空间 */
+    }
+
+    /* 弹窗中的按钮样式 (修改/删除) */
+    .popup-buttons {
+      margin-top: 10px;
+      display: flex;
+      /* 让按钮并排显示 */
+      gap: 5px;
+    }
+
+    .popup-buttons button {
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .popup-buttons .edit-btn {
+      background-color: #2196F3;
+      /* 蓝色 */
+      color: white;
+      border: none;
+    }
+
+    .popup-buttons .delete-btn {
+      background-color: #f44336;
+      /* 红色 */
+      color: white;
+      border: none;
+    }
+
+    /* 模态弹窗（添加/修改足迹）样式 */
+    .modal {
+      display: none;
+      /* 默认隐藏 */
+      position: fixed;
+      z-index: 1001;
+      /* 比控制面板更高 */
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      /* 允许滚动 */
+      background-color: rgba(0, 0, 0, 0.4);
+      /* 半透明黑色背景 */
+      backdrop-filter: blur(2px);
+      /* 模糊背景，现代浏览器支持 */
+    }
+
+    .modal-content {
+      background-color: #fefefe;
+      margin: 10% auto;
+      /* 居中显示 */
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 550px;
+      /* 最大宽度 */
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      position: relative;
+      animation: fadeIn 0.3s ease-out;
+      /* 弹窗淡入动画 */
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .close-button {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      line-height: 20px;
+      /* 调整关闭按钮垂直位置 */
+    }
+
+    .close-button:hover,
+    .close-button:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .modal-content label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .modal-content input,
+    .modal-content textarea {
+      width: calc(100% - 20px);
+      /* 减去padding */
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      /* 确保 padding 不增加宽度 */
+      font-size: 14px;
+    }
+
+    .modal-content button[type="submit"] {
+      padding: 10px 20px;
+      background-color: #007bff;
+      /* 蓝色 */
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+
+    .modal-content button[type="submit"]:hover {
+      background-color: #0056b3;
+    }
+  </style>
+
+
+
+  <style>
+    /* 调整 MiniMap 的位置，使其不与右下角的其他元素重叠，例如可以放在左下角 */
+    .leaflet-control-minimap {
+      left: 20px !important;
+      /* 根据需要调整左边距 */
+      bottom: 20px !important;
+      /* 根据需要调整下边距 */
+      right: auto !important;
+      /* 确保不占用右侧 */
+    }
+
+    /* 调整地图类型切换控件的位置，避免与搜索框等重叠 */
+    .leaflet-control-layers {
+      right: 20px !important;
+      /* 设置右边距，根据需要调整 */
+      bottom: 20px !important;
+      /* 设置下边距，根据需要调整 */
+      left: auto !important;
+      /* 确保不占用左侧 */
+    }
+
+    /* 路线规划组样式 */
+    .route-planning-group {
+      display: flex;
+      flex-direction: column;
+      /* 让按钮和输入框垂直堆叠 */
+      gap: 8px;
+      /* 元素间距 */
+    }
+
+    .route-planning-group input[type="text"] {
+      width: calc(100% - 16px);
+      /* 适应宽度，减去padding */
+      /* 继承 #controls input[type="text"] 的样式，如果需要覆盖再单独写 */
+    }
+
+    /* 可选: 车辆图标样式 */
+    .vehicle-icon {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF0000"><path d="M12 2c-3.86 0-7 3.14-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>');
+      /* 示例SVG图标，可以替换为车辆图标 */
+      background-size: cover;
+      width: 32px;
+      /* 图标宽度 */
+      height: 32px;
+      /* 图标高度 */
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 收缩按钮 */
+    /* 可收缩内容的默认隐藏样式 */
+    .collapsible-content {
+      display: none;
+      /* 默认隐藏 */
+      overflow: hidden;
+      /* 隐藏溢出内容 */
+      /* 如果未来需要平滑动画，可以考虑添加： */
+      /* transition: max-height 0.3s ease-out; */
+      /* max-height: 0; */
+    }
+
+    /* 展开状态的样式 */
+    .collapsible-content.active {
+      display: block;
+      /* 展开时显示 */
+      /* 如果配合 max-height 和 transition，这里 max-height 需要一个足够大的值 */
+      /* max-height: 1000px; /* 示例值，确保内容能完全显示 */
+    }
+
+    #toggleControlsBtn:hover {
+      background-color: #0056b3;
+    }
+  </style>
+
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <div id="loader">地图加载中...</div>
+
+  <div id="controls">
+    <button id="toggleControlsBtn" style="width: 100%; padding: 10px; margin-bottom: 10px;">
+      收起控制面板
+    </button>
+
+    <div id="allControlsContent" class="collapsible-content active">
+
+      <h3>足迹管理</h3>
+      <div class="search-group">
+        <select id="searchField">
+          <option value="place_name">地点名称</option>
+          <option value="miaoshu">描述</option>
+        </select>
+        <input type="text" id="searchKeyword" placeholder="输入关键词">
+        <button onclick="performSearch()">搜索足迹</button>
+        <button onclick="loadFootprints()">显示全部</button>
+      </div>
+      <button onclick="openAddModal()">添加新足迹</button>
+
+      <hr style="margin: 10px 0; border-color: #ddd;">
+      <h3>地名搜索</h3>
+      <div class="search-group">
+        <input type="text" id="location-search-input" placeholder="输入地名..." />
+        <button id="location-search-button">搜索地名</button>
+      </div>
+
+      <hr style="margin: 10px 0; border-color: #ddd;">
+      <h3>路线规划</h3>
+      <div class="route-planning-group">
+        <button id="setStartPointBtn">设置起点</button>
+        <button id="setEndPointBtn">设置终点</button>
+        <input type="text" id="startPointInput" placeholder="起点经纬度 (点击地图或地理编码)">
+        <input type="text" id="endPointInput" placeholder="终点经纬度 (点击地图或地理编码)">
+        <button id="planRouteBtn">规划路线</button>
+        <button id="clearRouteBtn">清除路线</button>
+      </div>
+      <button id="openWeatherModalBtn">天气查询</button>
+
+    </div>
+  </div>
+
+  <div id="footprintModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="closeFootprintModal()">&times;</span>
+      <h2 id="modalTitle">添加足迹</h2>
+      <form id="footprintForm">
+        <input type="hidden" id="footprintId">
+
+        <label for="placeName">地点名称:</label>
+        <input type="text" id="placeName" required>
+
+        <label for="visitTime">访问日期:</label>
+        <input type="date" id="visitTime">
+
+        <label for="imageUrl">图片 URL:</label>
+        <input type="text" id="imageUrl" placeholder="http://example.com/image.jpg">
+
+        <label for="latitude">纬度 (Lat):</label>
+        <input type="number" id="latitude" step="any" required>
+
+        <label for="longitude">经度 (Lon):</label>
+        <input type="number" id="longitude" step="any" required>
+
+        <label for="miaoshu">描述:</label>
+        <textarea id="miaoshu" rows="4"></textarea>
+
+        <button type="submit" id="saveFootprintBtn">保存</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 天气查询模态框 -->
+  <div id="weatherModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" id="closeWeatherModal">&times;</span>
+      <h2>查询天气</h2>
+      <label for="weatherCityInput">请输入城市名称:</label>
+      <input type="text" id="weatherCityInput" placeholder="例如: 北京 或 New York" required>
+      <button type="button" id="queryWeatherBtn" style="margin-top: 15px;">查询</button>
+      <div id="weatherResults"
+        style="margin-top: 20px; padding: 10px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9;">
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script>
+    const map = L.map('map').setView([30.5, 114.3], 6); // 默认视图，可以根据你的足迹点分布调整
+
+    // !!! IMPORTANT: 替换为您的和风天气API Key !!!
+    const OPENWEATHER_API_KEY = 'ca39cf2d891b01de667075428bb754cb';
+
+    // 定义不同的基础图层
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 18
+    });
+
+    // 天地图 API Key (从 wzjtravel.html 获取)
+    const TIAN_DI_TU_KEY = 'c07f0655a66df9ee06f5c97a219d25d7';
+    const TIAN_DI_TU_SUBDOMAINS = ['0', '1', '2', '3', '4', '5', '6', '7'];
+
+    // 天地图矢量图层
+    const tiandituVec = L.tileLayer(`http://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIAN_DI_TU_KEY}`, {
+      subdomains: TIAN_DI_TU_SUBDOMAINS,
+      attribution: '© 天地图',
+      maxZoom: 18,
+      opacity: 1 // 确保底图完全不透明
+    });
+    // 天地图矢量注记
+    const tiandituCva = L.tileLayer(`http://t{s}.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIAN_DI_TU_KEY}`, {
+      subdomains: TIAN_DI_TU_SUBDOMAINS,
+      attribution: '© 天地图',
+      maxZoom: 18
+    });
+    // 组合天地图矢量图层 (底图 + 注记)
+    const tiandituVecWithAnno = L.layerGroup([tiandituVec, tiandituCva]);
+
+    // 天地图影像图层
+    const tiandituImg = L.tileLayer(`http://t{s}.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIAN_DI_TU_KEY}`, {
+      subdomains: TIAN_DI_TU_SUBDOMAINS,
+      attribution: '© 天地图',
+      maxZoom: 18
+    });
+    // 天地图影像注记
+    const tiandituCia = L.tileLayer(`http://t{s}.tianditu.gov.cn/cia_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cia&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIAN_DI_TU_KEY}`, {
+      subdomains: TIAN_DI_TU_SUBDOMAINS,
+      attribution: '© 天地图',
+      maxZoom: 18
+    });
+    // 组合天地图影像图层 (底图 + 注记)
+    const tiandituImgWithAnno = L.layerGroup([tiandituImg, tiandituCia]);
+
+    // 将 OpenStreetMap 作为默认底图添加到地图
+    osmLayer.addTo(map);
+
+    // 定义基础图层对象，用于 L.control.layers
+    const baseLayers = {
+      "OpenStreetMap": osmLayer,
+      "天地图矢量": tiandituVecWithAnno,
+      "天地图影像": tiandituImgWithAnno
+    };
+
+    // === 添加地图控件 ===
+
+    // 1. 缩略地图 (MiniMap)
+    // MiniMap 也可以选择不同的底图，这里我们使用天地图矢量作为 MiniMap 的底图
+    const miniMapLayer = L.tileLayer(`http://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIAN_DI_TU_KEY}`, {
+      subdomains: TIAN_DI_TU_SUBDOMAINS,
+      attribution: '© 天地图',
+      maxZoom: 18 // MiniMap 的最大缩放级别
+    });
+    const miniMap = new L.Control.MiniMap(miniMapLayer, {
+      toggleDisplay: true, // 允许展开/折叠 MiniMap
+      position: 'bottomright' // 放置在左下角
+    }).addTo(map);
+
+    // 2. 地图类型切换 (Layers Control)
+    // Leaflet 的 L.control.layers 默认是右上角，并自动处理基本图层的单选切换
+    L.control.layers(baseLayers, null, {
+      collapsed: false // 默认展开图层选择面板
+    }).addTo(map);
+
+    // 3. 比例尺 (Scale Control)
+    L.control.scale({
+      imperial: false // 不显示英制单位，只显示公制
+    }).addTo(map);
+
+    // 4. 缩放控件 (Zoom Control)
+    // Leaflet 默认就包含了缩放控件，无需额外添加。
+    // 如果你之前移除了它，可以这样重新添加：
+    // L.control.zoom({ position: 'topleft' }).addTo(map); // 例如放在左上角
+
+    let drawnItems; // Leaflet.Draw 用于存储绘制的图形层
+    // 4. 初始化一个 FeatureGroup 用于存储绘制的图形
+    // 这是 Leaflet.Draw 需要的，它会把绘制的图形添加到这个层
+    drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    // 5. 添加 Leaflet.Draw 控件
+    const drawControl = new L.Control.Draw({
+      edit: {
+        featureGroup: drawnItems, // 允许编辑绘制的图形
+        poly: {
+          allowIntersection: false // 禁止多边形自相交
+        }
+      },
+      draw: {
+        polygon: {
+          allowIntersection: false, // 禁止多边形自相交
+          showArea: true, // 绘制多边形时显示面积
+          metric: true // 使用公制单位（平方米/平方公里）
+        },
+        polyline: {
+          metric: true, // 绘制线时显示公制单位（米/公里）
+          shapeOptions: {
+            color: '#f30a0a', // 线颜色
+            weight: 3,
+            opacity: 0.8
+          }
+        },
+        // 禁用其他绘图工具，只保留线和多边形，以及编辑功能
+        circlemarker: false,
+        circle: false,
+        rectangle: false,
+        marker: false
+      }
+    });
+    map.addControl(drawControl);
+
+    // 6. 监听 Leaflet.Draw 的绘制完成事件
+    map.on(L.Draw.Event.CREATED, function (e) {
+      const type = e.layerType;
+      const layer = e.layer;
+
+      if (type === 'polyline') {
+        // 获取线段的地理长度
+        const length = L.GeometryUtil.geodesicLength(layer.getLatLngs());
+        let lengthStr;
+        if (length < 1000) {
+          lengthStr = `${length.toFixed(2)} 米`;
+        } else {
+          lengthStr = `${(length / 1000).toFixed(2)} 公里`;
+        }
+        layer.bindPopup(`测量距离: <b>${lengthStr}</b>`).openPopup();
+        console.log('测量距离:', lengthStr);
+      } else if (type === 'polygon') {
+        // 获取多边形的地理面积
+        const area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+        let areaStr;
+        if (area < 1000000) { // 小于1平方公里
+          areaStr = `${area.toFixed(2)} 平方米`;
+        } else {
+          areaStr = `${(area / 1000000).toFixed(2)} 平方公里`;
+        }
+        layer.bindPopup(`测量面积: <b>${areaStr}</b>`).openPopup();
+        console.log('测量面积:', areaStr);
+      }
+      drawnItems.addLayer(layer); // 将绘制的图形添加到 FeatureGroup
+    });
+
+    // 7. 监听 Leaflet.Draw 的编辑事件 (可选，如果你想处理编辑后的测量结果)
+    map.on(L.Draw.Event.EDITED, function (e) {
+      e.layers.eachLayer(function (layer) {
+        if (layer instanceof L.Polyline) { // 检查是否是线或多边形
+          const length = L.GeometryUtil.geodesicLength(layer.getLatLngs());
+          let lengthStr;
+          if (length < 1000) {
+            lengthStr = `${length.toFixed(2)} 米`;
+          } else {
+            lengthStr = `${(length / 1000).toFixed(2)} 公里`;
+          }
+          // 更新 Popup 内容或在控制台显示
+          if (layer.getPopup()) {
+            layer.getPopup().setContent(`测量距离: <b>${lengthStr}</b>`);
+          } else {
+            layer.bindPopup(`测量距离: <b>${lengthStr}</b>`).openPopup();
+          }
+          console.log('编辑后距离:', lengthStr);
+        } else if (layer instanceof L.Polygon) {
+          const area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+          let areaStr;
+          if (area < 1000000) { // 小于1平方公里
+            areaStr = `${area.toFixed(2)} 平方米`;
+          } else {
+            areaStr = `${(area / 1000000).toFixed(2)} 平方公里`;
+          }
+          // 更新 Popup 内容或在控制台显示
+          if (layer.getPopup()) {
+            layer.getPopup().setContent(`测量面积: <b>${areaStr}</b>`);
+          } else {
+            layer.bindPopup(`测量面积: <b>${areaStr}</b>`).openPopup();
+          }
+          console.log('编辑后面积:', areaStr);
+        }
+      });
+    });
+
+    // 8. 监听 Leaflet.Draw 的删除事件 (可选，如果你想在删除后执行某些操作)
+    map.on(L.Draw.Event.DELETED, function (e) {
+      console.log('图形被删除:', e.layers);
+    });
+
+    // 全局变量用于存储搜索结果的 marker
+    let searchResultMarkers = L.featureGroup().addTo(map);
+
+    // 获取地名搜索框和搜索按钮元素 (使用新的ID)
+    const locationSearchInput = document.getElementById('location-search-input');
+    const locationSearchButton = document.getElementById('location-search-button');
+
+    // 检查元素是否存在，确保代码在它们加载后执行
+    if (locationSearchInput && locationSearchButton) {
+      // 阻止点击输入框和按钮时地图事件的传播（例如点击导致地图平移）
+      L.DomEvent.disableClickPropagation(locationSearchInput);
+      L.DomEvent.disableClickPropagation(locationSearchButton); // 针对按钮也阻止
+
+      // 地名搜索按钮点击事件
+      locationSearchButton.addEventListener('click', async () => {
+        const query = locationSearchInput.value.trim();
+        if (!query) {
+          alert('请输入要搜索的地名！');
+          return;
+        }
+
+        // 清除之前的搜索结果 marker
+        searchResultMarkers.clearLayers();
+
+        try {
+          // 使用 Nominatim (OpenStreetMap) 地理编码服务
+          const response = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+          const results = response.data;
+
+          if (results && results.length > 0) {
+            results.forEach(result => {
+              const lat = parseFloat(result.lat);
+              const lon = parseFloat(result.lon);
+              const placeName = result.display_name;
+
+              // 创建一个新的 marker 并添加到 searchResultMarkers 图层组
+              const marker = L.marker([lat, lon])
+                .bindPopup(`<b>${placeName}</b><br>经度: ${lon}<br>纬度: ${lat}`).openPopup();
+              searchResultMarkers.addLayer(marker);
+            });
+
+            // 调整地图视图以包含所有搜索结果
+            map.fitBounds(searchResultMarkers.getBounds(), { padding: [50, 50] }); // 添加 padding 避免被 UI 遮挡
+            alert(`找到 ${results.length} 个结果！`);
+          } else {
+            alert('未找到相关地名，请尝试其他关键词。');
+          }
+        } catch (error) {
+          console.error('地名搜索失败:', error);
+          alert('地名搜索失败，请查看控制台获取详情。');
+        }
+      });
+    }
+
+    // 路线规划相关全局变量
+    let startPoint = null; // 存储起点LatLng对象
+    let endPoint = null;   // 存储终点LatLng对象
+    let routingPolyline = null; // 存储路线Polyline对象
+    let vehicleMarker = null; // 存储车辆Marker对象
+    let animationInterval = null; // 存储动画定时器ID
+
+    const startPointInput = document.getElementById('startPointInput');
+    const endPointInput = document.getElementById('endPointInput');
+    const setStartPointBtn = document.getElementById('setStartPointBtn');
+    const setEndPointBtn = document.getElementById('setEndPointBtn');
+    const planRouteBtn = document.getElementById('planRouteBtn');
+    const clearRouteBtn = document.getElementById('clearRouteBtn');
+
+    // 禁用点击事件传播到地图
+    L.DomEvent.disableClickPropagation(startPointInput);
+    L.DomEvent.disableClickPropagation(endPointInput);
+    L.DomEvent.disableClickPropagation(setStartPointBtn);
+    L.DomEvent.disableClickPropagation(setEndPointBtn);
+    L.DomEvent.disableClickPropagation(planRouteBtn);
+    L.DomEvent.disableClickPropagation(clearRouteBtn);
+
+
+    // 辅助函数：将 LatLng 对象格式化为字符串
+    const formatLatLng = (latlng) => {
+      if (!latlng) return '';
+      return `${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+    };
+
+    // 辅助函数：清除当前路线和车辆
+    // suppressMessage: 如果为 true，则不显示“路线已清除”的消息
+    const clearRoute = (suppressMessage = false) => {
+      if (routingPolyline) {
+        map.removeLayer(routingPolyline);
+        routingPolyline = null;
+      }
+      if (vehicleMarker) {
+        map.removeLayer(vehicleMarker);
+        vehicleMarker = null;
+      }
+      if (animationInterval) {
+        clearInterval(animationInterval);
+        animationInterval = null;
+      }
+      // !!! 重点修改：移除以下两行 !!!
+      // startPoint = null; // 移除这行
+      // endPoint = null;   // 移除这行
+      startPointInput.value = '';
+      endPointInput.value = '';
+
+      // 重置起终点设置按钮的颜色和文本
+      setStartPointBtn.style.backgroundColor = '#007bff'; // 默认蓝色
+      setStartPointBtn.textContent = '设置起点';
+      setEndPointBtn.style.backgroundColor = '#007bff'; // 默认蓝色
+      setEndPointBtn.textContent = '设置终点';
+
+      if (!suppressMessage) {
+        console.log('路线已清除。');
+        // 如果您希望用户手动点击清除时弹出提示，可以取消注释下面这行：
+        // alert('路线已清除。');
+      }
+    };
+
+    // 点击地图选择起终点
+    let clickMode = null; // 'start' 或 'end'
+
+    map.on('click', (e) => {
+      if (clickMode === 'start') {
+        startPoint = e.latlng;
+        startPointInput.value = formatLatLng(startPoint);
+        alert(`起点已设置为: ${formatLatLng(startPoint)}`);
+        clickMode = null; // 恢复正常模式
+      } else if (clickMode === 'end') {
+        endPoint = e.latlng;
+        endPointInput.value = formatLatLng(endPoint);
+        alert(`终点已设置为: ${formatLatLng(endPoint)}`);
+        clickMode = null; // 恢复正常模式
+      }
+    });
+
+    setStartPointBtn.addEventListener('click', () => {
+      alert('请点击地图选择起点...');
+      clickMode = 'start';
+    });
+
+    setEndPointBtn.addEventListener('click', () => {
+      alert('请点击地图选择终点...');
+      clickMode = 'end';
+    });
+
+    // 规划路线按钮点击事件
+    planRouteBtn.addEventListener('click', async () => {
+      // --- 调试日志，请在确认问题解决后删除 ---
+      console.log('点击规划路线按钮');
+      console.log('startPoint (before check):', startPoint);
+      console.log('endPoint (before check):', endPoint);
+      // --- 调试日志结束 ---
+
+      if (!startPoint || !endPoint) {
+        alert('错误：请先在地图上选择起点和终点！');
+        return;
+      }
+
+      // 在尝试规划新路线之前，先静默清除所有旧的路线显示和数据。
+      // clearRoute(true) 表示不显示“路线已清除”的提示。
+      // 但注意，此时 clearRoute 不再将 startPoint/endPoint 置为 null
+      clearRoute(true);
+
+      const OSRM_API_URL = 'https://router.project-osrm.org/route/v1/driving/';
+      // 此时 startPoint 和 endPoint 应该仍然保持着它们的值
+      const coordinates = `${startPoint.lng},${startPoint.lat};${endPoint.lng},${endPoint.lat}`; // 您的第 722 行
+
+      try {
+        const response = await axios.get(`${OSRM_API_URL}${coordinates}?geometries=geojson&overview=full`);
+        const route = response.data.routes[0];
+
+        if (route && route.geometry && route.geometry.coordinates) {
+          const routeGeoJSON = route.geometry;
+          const pathCoordinates = routeGeoJSON.coordinates.map(coord => [coord[1], coord[0]]);
+
+          // 绘制路线
+          routingPolyline = L.polyline(pathCoordinates, { color: 'blue', weight: 5, opacity: 0.7 }).addTo(map);
+          map.fitBounds(routingPolyline.getBounds(), { padding: [50, 50] });
+
+          console.log(`路线规划成功！距离: ${(route.distance / 1000).toFixed(2)} km, 预计时间: ${Math.round(route.duration / 60)} 分钟。`);
+          alert(`路线规划成功！距离: ${(route.distance / 1000).toFixed(2)} km, 预计时间: ${Math.round(route.duration / 60)} 分钟。`);
+
+          // 动态车辆展示
+          const vehicleIcon = L.divIcon({
+            className: 'vehicle-icon',
+            html: '<i class="fa-solid fa-car"></i>', // 确保您已引入 Font Awesome
+            iconSize: [32, 32]
+          });
+          vehicleMarker = L.marker(pathCoordinates[0], { icon: vehicleIcon }).addTo(map);
+
+          let currentIndex = 0;
+          const speed = 10; // 模拟速度，数值越小越快 (每次跳过的点数)
+          const animationDelay = 50; // 动画更新间隔 (毫秒)
+
+          animationInterval = setInterval(() => {
+            if (currentIndex < pathCoordinates.length - 1) {
+              currentIndex += speed; // 跳过一些点以加速
+              if (currentIndex >= pathCoordinates.length - 1) {
+                currentIndex = pathCoordinates.length - 1; // 确保不超过终点
+              }
+              const nextLatLng = pathCoordinates[currentIndex];
+              vehicleMarker.setLatLng(nextLatLng);
+              // map.panTo(nextLatLng); // 如果需要，让地图跟随车辆移动
+            } else {
+              clearInterval(animationInterval);
+              console.log('车辆已到达终点！');
+              alert('车辆已到达终点！');
+              // 车辆到达终点后，可以考虑重置起终点，方便下次规划
+              // startPoint = null;
+              // endPoint = null;
+              // startPointInput.value = '';
+              // endPointInput.value = '';
+            }
+          }, animationDelay);
+
+        } else {
+          alert('未能规划出有效路线。请尝试调整起终点。');
+          // 规划失败时，重置起终点变量和输入框
+          startPoint = null;
+          endPoint = null;
+          startPointInput.value = '';
+          endPointInput.value = '';
+          clearRoute(true); // 清除地图上的元素，不显示消息
+        }
+      } catch (error) {
+        console.error('路线规划失败:', error);
+        alert('路线规划失败，请检查起终点或网络连接。\n详情请查看控制台。');
+        // 请求失败时，重置起终点变量和输入框
+        startPoint = null;
+        endPoint = null;
+        startPointInput.value = '';
+        endPointInput.value = '';
+        clearRoute(true); // 清除地图上的元素，不显示消息
+      }
+    });
+
+    // 绑定清除按钮事件，确保它调用 clearRoute 并且显示消息
+    clearRouteBtn.addEventListener('click', () => clearRoute(false)); // 明确告诉 clearRoute 显示消息
+
+    // 获取切换按钮和包含所有控制内容的 div
+    const toggleControlsBtn = document.getElementById('toggleControlsBtn');
+    const allControlsContent = document.getElementById('allControlsContent'); // <-- 这里改为获取新的 ID
+
+    let controlsAreExpanded = true; // 初始状态：控制面板是展开的
+
+    // 切换控制面板的显示/隐藏状态
+    toggleControlsBtn.addEventListener('click', () => {
+      controlsAreExpanded = !controlsAreExpanded; // 反转状态
+
+      if (controlsAreExpanded) {
+        allControlsContent.classList.add('active'); // 添加 active 类以显示
+        toggleControlsBtn.textContent = '收起控制面板';
+      } else {
+        allControlsContent.classList.remove('active'); // 移除 active 类以隐藏
+        toggleControlsBtn.textContent = '展开控制面板';
+      }
+    });
+
+    
+    // 新增：天气查询相关元素
+    const openWeatherModalBtn = document.getElementById('openWeatherModalBtn');
+    const weatherModal = document.getElementById('weatherModal');
+    const closeWeatherModalBtn = document.getElementById('closeWeatherModal');
+    const weatherCityInput = document.getElementById('weatherCityInput');
+    const queryWeatherBtn = document.getElementById('queryWeatherBtn');
+    const weatherResults = document.getElementById('weatherResults');
+
+    // // !!! IMPORTANT: 替换为您的和风天气API Key !!!
+    // const QWEATHER_API_KEY = 'ca39cf2d891b01de667075428bb754cb';
+
+    /**
+ * 根据城市名称查询天气并显示 (使用OpenWeatherMap API)。
+ */
+    const fetchWeatherByCity = async () => {
+      const city = weatherCityInput.value.trim();
+      if (!city) {
+        weatherResults.innerHTML = '<p style="color: red;">请输入城市名称！</p>';
+        return;
+      }
+      if (OPENWEATHER_API_KEY === 'YOUR_OPENWEATHERMAP_API_KEY' || !OPENWEATHER_API_KEY) {
+        weatherResults.innerHTML = '<p style="color: red;">错误：请在代码中设置您的OpenWeatherMap API Key。</p>';
+        return;
+      }
+
+      weatherResults.innerHTML = '<p>正在查询天气...</p>';
+
+      try {
+        // OpenWeatherMap 实时天气数据API URL
+        // 通过 'q' 参数传递城市名称，'appid' 传递API Key，'units=metric' 表示摄氏度和公制单位，'lang=zh_cn' 表示中文
+        const openWeatherMapUrl = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=zh_cn`;
+
+        console.log("OpenWeatherMap URL:", openWeatherMapUrl); // 辅助调试
+
+        const response = await axios.get(openWeatherMapUrl);
+        const data = response.data;
+
+        // OpenWeatherMap 成功状态码是 200
+        if (data.cod === 200) {
+          const cityName = data.name;
+          const country = data.sys.country;
+          const temp = data.main.temp;
+          const feelsLike = data.main.feels_like;
+          const description = data.weather[0].description; // 天气描述
+          const iconCode = data.weather[0].icon; // 天气图标代码
+          const humidity = data.main.humidity; // 相对湿度
+          const pressure = data.main.pressure; // 大气压强
+          const windSpeed = data.wind.speed; // 风速，单位m/s (因为units=metric)
+          const windDeg = data.wind.deg; // 风向角度 (0-360)
+          const visibility = data.visibility / 1000; // 能见度，单位米，转换为公里
+
+          // 辅助函数：将风向角度转换为文字描述
+          const getWindDirection = (deg) => {
+            if (deg > 337.5 || deg <= 22.5) return "北风";
+            if (deg > 22.5 && deg <= 67.5) return "东北风";
+            if (deg > 67.5 && deg <= 112.5) return "东风";
+            if (deg > 112.5 && deg <= 157.5) return "东南风";
+            if (deg > 157.5 && deg <= 202.5) return "南风";
+            if (deg > 202.5 && deg <= 247.5) return "西南风";
+            if (deg > 247.5 && deg <= 292.5) return "西风";
+            if (deg > 292.5 && deg <= 337.5) return "西北风";
+            return "";
+          };
+          const windDirText = getWindDirection(windDeg);
+          // 将风速从 m/s 转换为 km/h (1 m/s ≈ 3.6 km/h)
+          const windSpeedKmH = (windSpeed * 3.6).toFixed(1);
+
+          const iconUrl = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+
+          weatherResults.innerHTML = `
+            <h3>${cityName}, ${country}</h3>
+            <p><strong>温度:</strong> ${temp}°C (体感 ${feelsLike}°C)</p>
+            <p><strong>天气:</strong> ${description} <img src="${iconUrl}" alt="${description}" style="vertical-align: middle; width: 24px; height: 24px;"></p>
+            <p><strong>风向/风速:</strong> ${windDirText} ${windSpeedKmH} km/h</p>
+            <p><strong>相对湿度:</strong> ${humidity}%</p>
+            <p><strong>大气压强:</strong> ${pressure} hPa</p>
+            <p><strong>能见度:</strong> ${visibility} 公里</p>
+            <p style="font-size: 0.8em; color: #666;">（数据来自 OpenWeatherMap）</p>
+        `;
+        } else {
+          // OpenWeatherMap 错误处理
+          let errorMessage = '天气查询失败。';
+          if (data.cod === '404' && data.message === 'city not found') {
+            errorMessage = `未找到城市 "${city}" 的天气信息，请检查名称。`;
+          } else if (data.message) {
+            errorMessage = `天气查询失败: ${data.message}`;
+          }
+          weatherResults.innerHTML = `<p style="color: red;">${errorMessage}</p>`;
+          console.error("OpenWeatherMap 查询失败:", data);
+        }
+      } catch (error) {
+        console.error('OpenWeatherMap 查询遇到错误:', error);
+        if (error.response) {
+          const status = error.response.status;
+          const data = error.response.data;
+          if (status === 401) {
+            weatherResults.innerHTML = `<p style="color: red;">OpenWeatherMap API Key 无效或未授权，请检查您的API Key。</p>`;
+          } else if (status === 404) {
+            weatherResults.innerHTML = `<p style="color: red;">未找到该城市的天气信息，请检查城市名称。</p>`;
+          } else {
+            weatherResults.innerHTML = `<p style="color: red;">OpenWeatherMap 查询失败: 服务器错误 ${status} - ${data.message || '未知'}</p>`;
+          }
+        } else if (error.request) {
+          weatherResults.innerHTML = `<p style="color: red;">网络请求失败，请检查您的网络连接。</p>`;
+        } else {
+          weatherResults.innerHTML = `<p style="color: red;">发生未知错误，请重试。</p>`;
+        }
+      }
+    };
+
+    // 新增：天气查询按钮事件
+    if (openWeatherModalBtn) {
+      openWeatherModalBtn.addEventListener('click', () => {
+        weatherModal.style.display = 'block';
+        weatherResults.innerHTML = ''; // 清空上次查询结果
+        weatherCityInput.value = ''; // 清空城市输入框
+      });
+    }
+
+    // 新增：关闭天气模态框按钮事件
+    if (closeWeatherModalBtn) {
+      closeWeatherModalBtn.addEventListener('click', () => {
+        weatherModal.style.display = 'none';
+        weatherResults.innerHTML = ''; // 清空结果
+        weatherCityInput.value = ''; // 清空输入
+      });
+    }
+
+    // 新增：天气查询按钮事件
+    if (queryWeatherBtn) {
+      queryWeatherBtn.addEventListener('click', fetchWeatherByCity);
+    }
+
+
+    let currentGeoJsonLayer; // 用于存储当前GeoJSON图层，方便移除和刷新
+
+    // *** IMPORTANT: 根据你的实际部署修改这个URL ***
+    // 后端 API 基础 URL
+    // 例如: '/footprint-tracker-backend-1.0-SNAPSHOT/api/footprints'
+    // 确保这里的上下文路径与你 WAR 包解压后的文件夹名称完全一致
+    const API_BASE_URL = '/sytservlet/api/footprints';
+    // *************************************************
+
+    /**
+     * 加载足迹点并显示在地图上。
+     * 默认使用 API_BASE_URL 加载所有足迹。当传入 searchParams (如搜索关键词) 时，则加载特定数据。
+     * @param {URLSearchParams} [searchParams] 可选参数，如果提供，则添加到URL作为查询字符串。
+     */
+    const loadFootprints = async (searchParams = null) => {
+      document.getElementById('loader').style.display = 'block';
+      if (currentGeoJsonLayer) {
+        map.removeLayer(currentGeoJsonLayer); // 移除旧图层
+      }
+
+      let requestUrl = API_BASE_URL;
+      if (searchParams) {
+        requestUrl += '?' + searchParams.toString();
+      }
+
+      try {
+        console.log('正在请求数据:', requestUrl);
+        const response = await axios.get(requestUrl, {
+          timeout: 15000, // 增加超时时间，防止网络慢
+          validateStatus: (status) => status >= 200 && status < 300 // 只接受 2xx 状态码
+        });
+
+        const footprints = response.data; // 假设后端直接返回 Footprint 对象数组
+
+        // 将后端返回的 Footprint 数组手动转换为 GeoJSON FeatureCollection 格式
+        const geoJsonData = {
+          "type": "FeatureCollection",
+          "features": footprints.map(fp => ({
+            "type": "Feature",
+            "properties": {
+              id: fp.id, // !!! 现在确保 id 存在 !!!
+              place_name: fp.placeName,
+              visit_time: fp.visitTime,
+              image_url: fp.imageUrl,
+              miaoshu: fp.miaoshu
+            },
+            "geometry": parseWKT(fp.geom) // 将 WKT 转换为 GeoJSON 几何对象
+          }))
+        };
+
+        if (!geoJsonData || !geoJsonData.features || !Array.isArray(geoJsonData.features)) {
+          throw new Error('返回的数据不是有效的足迹列表格式');
+        }
+
+        if (geoJsonData.features.length === 0) {
+          console.warn('服务器返回了空数据。');
+        }
+
+        console.log('成功加载数据:', geoJsonData);
+
+        currentGeoJsonLayer = L.geoJSON(geoJsonData, {
+          pointToLayer: (feature, latlng) => {
+            return L.circleMarker(latlng, {
+              radius: 8,
+              fillColor: '#FF5722', // 橙红色
+              color: '#E64A19',    // 深橙红色
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.8
+            });
+          },
+          onEachFeature: (feature, layer) => {
+            const props = feature.properties;
+            let content = `<strong>${props.place_name || '未命名地点'}</strong>`;
+
+            if (props.visit_time) {
+              content += `<br>日期：${props.visit_time}`;
+            }
+
+            if (props.miaoshu) {
+              content += `<p>${props.miaoshu}</p>`;
+            }
+
+            if (props.image_url) {
+              // 添加图片，并设置onerror，当图片加载失败时隐藏图片元素
+              content += `<img class="popup-img" src="${props.image_url}" onerror="this.style.display='none'" alt="足迹图片">`;
+            }
+
+            // 添加编辑和删除按钮
+            // 由于现在所有足迹点都通过后端API加载，都会有ID
+            if (props.id) {
+              content += `<div class="popup-buttons">
+                              <button class="edit-btn" onclick="openEditModal(${props.id})">修改</button>
+                              <button class="delete-btn" onclick="deleteFootprint(${props.id}, '${props.place_name}')">删除</button>
+                            </div>`;
+            }
+
+            layer.bindPopup(content, {
+              autoPan: false // 临时设置为 false 进行测试
+            });
+          }
+        }).addTo(map);
+
+        // 自动缩放到合适范围
+        const bounds = currentGeoJsonLayer.getBounds();
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50] });
+        } else {
+          // 如果没有足迹点，保持默认视图
+          map.setView([30.5, 114.3], 6);
+        }
+
+      } catch (error) {
+        console.error('数据加载失败:', error);
+        // 显示详细错误信息到弹窗
+        let errorDetails = `<b>${error.message || '数据加载失败'}</b>`;
+        if (error.response) {
+          errorDetails += `<br>HTTP状态: ${error.response.status} ${error.response.statusText}`;
+          errorDetails += `<br>请求URL: ${error.config.url}`;
+          let errorContent = '';
+          if (typeof error.response.data === 'string') {
+            errorContent = error.response.data;
+          } else if (typeof error.response.data === 'object') {
+            errorContent = JSON.stringify(error.response.data, null, 2);
+          } else {
+            errorContent = '无法解析错误信息';
+          }
+          errorDetails += `<div class="error-details">${errorContent}</div>`;
+        } else if (error.request) {
+          errorDetails += `<br>请求未收到响应: ${error.config.url}`;
+          errorDetails += `<div class="error-details">${error.message}</div>`;
+        } else {
+          errorDetails += `<br>请求配置错误: ${error.message}`;
+        }
+        const refreshButton = `<button style="padding:8px 16px;background:#4CAF50;color:white;border:none;border-radius:4px;cursor:pointer;" onclick="window.location.reload()">重试加载</button>`;
+        L.popup()
+          .setLatLng(map.getCenter())
+          .setContent(`<div style="color:red;padding:10px;">${errorDetails}<br><br>${refreshButton}</div>`)
+          .openOn(map);
+      } finally {
+        document.getElementById('loader').style.display = 'none';
+      }
+    };
+
+    /**
+     * 执行搜索功能，通过后端API获取数据。
+     */
+    const performSearch = () => {
+      const searchField = document.getElementById('searchField').value;
+      const searchKeyword = document.getElementById('searchKeyword').value.trim();
+
+      if (!searchKeyword) {
+        alert('请输入搜索关键词！');
+        return;
+      }
+
+      const searchParams = new URLSearchParams({
+        searchField: searchField,
+        keyword: searchKeyword
+      });
+      loadFootprints(searchParams); // 调用 loadFootprints，传入搜索参数
+    };
+
+    /**
+     * 辅助函数：将 WKT (Well-Known Text) 字符串转换为 GeoJSON 几何对象。
+     * @param {string} wkt 几何体的 WKT 字符串，例如 'POINT(110.123 30.456)'
+     * @returns {object|null} 对应的 GeoJSON 几何对象，如果解析失败则返回 null。
+     */
+    function parseWKT(wkt) {
+      if (!wkt) return null;
+      // 匹配 POINT(经度 纬度) 格式
+      const pointMatch = wkt.match(/POINT\(([-+]?\d+(\.\d+)?)\s+([-+]?\d+(\.\d+)?)\)/i);
+      if (pointMatch && pointMatch.length >= 4) {
+        const lon = parseFloat(pointMatch[1]);
+        const lat = parseFloat(pointMatch[3]);
+        return {
+          type: "Point",
+          coordinates: [lon, lat]
+        };
+      }
+      // 如果需要支持其他几何类型 (Polygon, LineString 等)，需要扩展这里的解析逻辑
+      console.warn('Unsupported WKT geometry type or invalid format:', wkt);
+      return null;
+    }
+
+
+    // 获取模态弹窗及表单元素
+    const footprintModal = document.getElementById('footprintModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const footprintForm = document.getElementById('footprintForm');
+    const footprintIdInput = document.getElementById('footprintId');
+    const placeNameInput = document.getElementById('placeName');
+    const visitTimeInput = document.getElementById('visitTime');
+    const imageUrlInput = document.getElementById('imageUrl');
+    const latitudeInput = document.getElementById('latitude');
+    const longitudeInput = document.getElementById('longitude');
+    const miaoshuInput = document.getElementById('miaoshu');
+    const saveFootprintBtn = document.getElementById('saveFootprintBtn');
+
+    /**
+     * 打开添加足迹的模态弹窗。
+     * 清空表单并设置标题。
+     */
+    const openAddModal = () => {
+      modalTitle.textContent = '添加足迹';
+      footprintIdInput.value = ''; // 清空ID，表示添加新足迹
+      footprintForm.reset(); // 重置表单所有字段
+      footprintModal.style.display = 'block';
+
+      // 尝试获取地图中心点作为初始经纬度值，方便用户输入
+      const center = map.getCenter();
+      latitudeInput.value = center.lat.toFixed(6);
+      longitudeInput.value = center.lng.toFixed(6);
+    };
+
+    /**
+     * 打开修改足迹的模态弹窗，并预填充数据。
+     * @param {number} id 要修改的足迹点ID。
+     */
+    const openEditModal = async (id) => {
+      try {
+        // 从后端API获取足迹详情 (通过 ID 参数)
+        const response = await axios.get(`${API_BASE_URL}?id=${id}`);
+        const footprint = response.data;
+
+        modalTitle.textContent = '修改足迹';
+        footprintIdInput.value = footprint.id;
+        placeNameInput.value = footprint.placeName || '';
+        visitTimeInput.value = footprint.visitTime || ''; // 日期格式应为 'YYYY-MM-DD'
+        imageUrlInput.value = footprint.imageUrl || '';
+        miaoshuInput.value = footprint.miaoshu || '';
+
+        // 从 WKT 字符串中解析经纬度并填充
+        const geom = parseWKT(footprint.geom);
+        if (geom && geom.coordinates) {
+          longitudeInput.value = geom.coordinates[0]; // 经度
+          latitudeInput.value = geom.coordinates[1]; // 纬度
+        } else {
+          longitudeInput.value = ''; // 如果解析失败，清空
+          latitudeInput.value = '';
+          console.warn(`Failed to parse geometry for footprint ID ${id}:`, footprint.geom);
+        }
+
+        footprintModal.style.display = 'block';
+      } catch (error) {
+        console.error('获取足迹详情失败:', error);
+        alert('获取足迹详情失败，请重试。' + (error.response ? `\nHTTP状态: ${error.response.status}` : ''));
+      }
+    };
+
+    /**
+     * 关闭模态弹窗。
+     */
+    const closeFootprintModal = () => {
+      footprintModal.style.display = 'none';
+      footprintForm.reset(); // 关闭时重置表单
+    };
+
+    // 监听表单提交事件 (添加或修改足迹)
+    footprintForm.addEventListener('submit', async (e) => {
+      e.preventDefault(); // 阻止表单默认提交行为
+
+      const id = footprintIdInput.value; // 如果有值，表示是修改操作
+      const placeName = placeNameInput.value.trim();
+      const visitTime = visitTimeInput.value; // HTML date input 已经格式化为 'YYYY-MM-DD'
+      const imageUrl = imageUrlInput.value.trim();
+      const latitude = parseFloat(latitudeInput.value);
+      const longitude = parseFloat(longitudeInput.value);
+      const miaoshu = miaoshuInput.value.trim();
+
+      // 基本验证
+      if (!placeName || isNaN(latitude) || isNaN(longitude)) {
+        alert('地点名称和经纬度是必填项，且经纬度必须是数字！');
+        return;
+      }
+
+      // 构建要发送到后端的数据对象
+      const footprintData = {
+        placeName: placeName,
+        visitTime: visitTime || null, // 如果为空字符串，则发送 null
+        imageUrl: imageUrl || null,
+        geom: `POINT(${longitude} ${latitude})`, // PostGIS 需要 WKT (Well-Known Text) 格式
+        miaoshu: miaoshu || null
+      };
+
+      try {
+        if (id) { // 如果 footprintIdInput 有值，说明是修改操作
+          footprintData.id = parseInt(id); // 添加ID到数据中
+          await axios.put(API_BASE_URL, footprintData, {
+            headers: { 'Content-Type': 'application/json' } // 明确告知后端发送 JSON
+          });
+          alert('足迹修改成功！');
+        } else { // 否则是添加新足迹操作
+          await axios.post(API_BASE_URL, footprintData, {
+            headers: { 'Content-Type': 'application/json' }
+          });
+          alert('足迹添加成功！');
+        }
+        closeFootprintModal(); // 保存成功后关闭弹窗
+        loadFootprints(); // 重新加载地图上的足迹点以显示最新数据
+      } catch (error) {
+        console.error('保存足迹失败:', error);
+        alert('保存足迹失败，请查看控制台获取详情。' + (error.response ? `\nHTTP状态: ${error.response.status}\n错误信息: ${JSON.stringify(error.response.data)}` : ''));
+      }
+    });
+
+    /**
+     * 删除足迹点。
+     * @param {number} id 待删除足迹点的ID。
+     * @param {string} placeName 待删除足迹点的名称 (用于确认提示)。
+     */
+    const deleteFootprint = async (id, placeName) => {
+      if (!confirm(`确定要删除足迹点 "${placeName}" (ID: ${id}) 吗？此操作不可逆！`)) {
+        return;
+      }
+
+      try {
+        // Axios DELETE 请求通常不支持请求体，所以ID放在URL路径中
+        await axios.delete(`${API_BASE_URL}/${id}`);
+        alert(`足迹点 "${placeName}" 删除成功！`);
+        map.closePopup(); // 关闭可能打开的popup
+        loadFootprints(); // 重新加载地图上的足迹点以显示最新数据
+      } catch (error) {
+        console.error('删除足迹失败:', error);
+        alert('删除足迹失败，请查看控制台获取详情。' + (error.response ? `\nHTTP状态: ${error.response.status}\n错误信息: ${JSON.stringify(error.response.data)}` : ''));
+      }
+    };
+
+    // 页面加载完成后，初始化加载所有足迹点
+    loadFootprints();
+  </script>
+</body>
+
+</html>
